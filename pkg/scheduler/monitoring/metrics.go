@@ -11,10 +11,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package monitoring
+package monitoring // Package monitoring provides the indicator definitions and recording methods required by Dapr Scheduler.
 
 import (
 	"context"
+	"log"
 	"sync/atomic"
 	"time"
 
@@ -25,8 +26,15 @@ import (
 	"github.com/dapr/dapr/pkg/diagnostics/utils"
 )
 
+// Job status codes used in metric recording.
+const (
+	JobStatusSuccess     int64 = 1 // Job completed successfully
+	JobStatusFailed      int64 = 2 // Job execution failed
+	JobStatusUndelivered int64 = 3 // Job could not be delivered
+)
+
 var (
-	sidecarConnectionCount int64 = 0
+	sidecarConnectionCount int64
 
 	sidecarsConnectedGauge = stats.Int64(
 		"scheduler/sidecars_connected",
@@ -67,27 +75,33 @@ var (
 // RecordSidecarsConnectedCount records the number of dapr sidecars connected to the scheduler service
 func RecordSidecarsConnectedCount(change int) {
 	current := atomic.AddInt64(&sidecarConnectionCount, int64(change))
-	stats.RecordWithTags(context.Background(), utils.WithTags(sidecarsConnectedGauge.Name()), sidecarsConnectedGauge.M(current))
+	if err := stats.RecordWithTags(context.Background(), utils.WithTags(sidecarsConnectedGauge.Name()), sidecarsConnectedGauge.M(current)); err != nil {
+		log.Printf("failed to record sidecars connected gauge: %v", err)
+	}
 }
 
 // RecordJobsScheduledCount records the number of jobs scheduled (jobType: "job", "actor", or "unknown")
 func RecordJobsScheduledCount(jobType string) {
-	stats.RecordWithTags(context.Background(), utils.WithTags(jobsScheduledTotal.Name(), jobType), jobsScheduledTotal.M(1))
+	if err := stats.RecordWithTags(context.Background(), utils.WithTags(jobsScheduledTotal.Name(), jobType), jobsScheduledTotal.M(1)); err != nil {
+		log.Printf("failed to record jobs scheduled count: %v", err)
+	}
 }
 
 // RecordJobsTriggeredCount records the number of successfully triggered jobs
 func RecordJobsTriggeredCount(jobType string) {
-	stats.RecordWithTags(context.Background(), utils.WithTags(jobsTriggeredTotal.Name(), jobType), jobsTriggeredTotal.M(1))
+	if err := stats.RecordWithTags(context.Background(), utils.WithTags(jobsTriggeredTotal.Name(), jobType), jobsTriggeredTotal.M(1)); err != nil {
+		log.Printf("failed to record jobs triggered count: %v", err)
+	}
 }
 
 // RecordJobStatus records job status metrics using int values: 1=SUCCESS, 2=FAILED, 3=UNDELIVERED
 func RecordJobStatus(status int64) {
 	switch status {
-	case 1:
+	case JobStatusSuccess:
 		stats.Record(context.Background(), jobsStatusSuccessTotal.M(1))
-	case 2:
+	case JobStatusFailed:
 		stats.Record(context.Background(), jobsStatusFailedTotal.M(1))
-	case 3:
+	case JobStatusUndelivered:
 		stats.Record(context.Background(), jobsStatusUndeliveredTotal.M(1))
 	}
 }
@@ -95,7 +109,9 @@ func RecordJobStatus(status int64) {
 // RecordTriggerDuration records the time it takes to send the job to dapr from the scheduler service
 func RecordTriggerDuration(start time.Time) {
 	elapsed := time.Since(start).Milliseconds()
-	stats.RecordWithTags(context.Background(), utils.WithTags(triggerLatency.Name()), triggerLatency.M(float64(elapsed)))
+	if err := stats.RecordWithTags(context.Background(), utils.WithTags(triggerLatency.Name()), triggerLatency.M(float64(elapsed))); err != nil {
+		log.Printf("failed to record trigger duration: %v", err)
+	}
 }
 
 // InitMetrics initializes the scheduler service metrics
