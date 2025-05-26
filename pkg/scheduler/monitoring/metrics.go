@@ -94,7 +94,9 @@ func RecordJobsTriggeredCount(jobType string) {
 	}
 }
 
-// RecordJobStatus records job status metrics using int values: 1=SUCCESS, 2=FAILED, 3=UNDELIVERED
+// RecordJobStatus records job status metrics using int values:
+// 1 = SUCCESS, 2 = FAILED, 3 = UNDELIVERED
+// Unrecognized status will be logged but ignored.
 func RecordJobStatus(status int64) {
 	switch status {
 	case JobStatusSuccess:
@@ -103,6 +105,8 @@ func RecordJobStatus(status int64) {
 		stats.Record(context.Background(), jobsStatusFailedTotal.M(1))
 	case JobStatusUndelivered:
 		stats.Record(context.Background(), jobsStatusUndeliveredTotal.M(1))
+	default:
+		log.Printf("unrecognized job status: %d", status)
 	}
 }
 

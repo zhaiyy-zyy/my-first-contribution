@@ -10,4 +10,6 @@ run:
 
 linters-settings:
   errcheck:
-    ignore: "Close|Write"
+    exclude-functions:
+      - Close
+      - Write

@@ -1,3 +1,4 @@
+// main.go - Demonstrates recording scheduler job metrics
 package main
 
 import (
@@ -8,21 +9,29 @@ import (
 )
 
 func main() {
-	fmt.Println("Initializing metrics...")
+	fmt.Println("== Dapr Scheduler Metrics Demo ==")
 
-	err := monitoring.InitMetrics()
-	if err != nil {
-		fmt.Printf("Failed to init metrics: %v\n", err)
+	// Step 1: Initialize metrics system
+	if err := monitoring.InitMetrics(); err != nil {
+		fmt.Printf("Failed to initialize metrics: %v\n", err)
 		return
 	}
+	fmt.Println("Metrics initialized successfully.")
 
-	fmt.Println("Recording metrics...")
+	// Step 2: Record valid job status metrics
+	fmt.Println("Recording job status metrics...")
 	monitoring.RecordJobStatus(monitoring.JobStatusSuccess)
 	monitoring.RecordJobStatus(monitoring.JobStatusFailed)
 	monitoring.RecordJobStatus(monitoring.JobStatusUndelivered)
+
+	// Step 3: Record invalid job status (should trigger log, not panic)
+	fmt.Println("Recording unknown job status (expected: log only)...")
 	monitoring.RecordJobStatus(999)
 
-	monitoring.RecordTriggerDuration(time.Now().Add(-1500 * time.Millisecond))
+	// Step 4: Simulate trigger latency recording (1500ms delay)
+	fmt.Println("Recording job trigger duration...")
+	startTime := time.Now().Add(-1500 * time.Millisecond)
+	monitoring.RecordTriggerDuration(startTime)
 
-	fmt.Println("Metrics recorded.")
+	fmt.Println("All metrics recorded successfully.")
 }
